@@ -2,18 +2,58 @@
 
     "use strict";
 
+    /*
+     * ==========================================
+     * WIFI WALKIE TALKIE
+     * WebRTC - Manual Signaling Test Version
+     * ==========================================
+     *
+     * Flow:
+     *
+     * PHONE A
+     *   Create Connection
+     *        ↓
+     *      OFFER
+     *        ↓
+     * PHONE B
+     *   Enter Offer
+     *        ↓
+     *      ANSWER
+     *        ↓
+     * PHONE A
+     *   Enter Answer
+     *        ↓
+     *    CONNECTED
+     *
+     * Audio is sent directly through WebRTC.
+     */
+
 
     /*
-     * WebRTC configuration
+     * ==========================================
+     * WEBRTC CONFIGURATION
+     * ==========================================
      *
-     * Empty ICE server list means
-     * local/direct connection only.
+     * STUN helps WebRTC discover the network path.
+     *
+     * For your hotspot/local-network test,
+     * host candidates should also be generated.
      */
 
     var rtcConfig = {
-        iceServers: []
+        iceServers: [
+            {
+                urls: "stun:stun.l.google.com:19302"
+            }
+        ]
     };
 
+
+    /*
+     * ==========================================
+     * VARIABLES
+     * ==========================================
+     */
 
     var peer = null;
 
@@ -21,8 +61,16 @@
 
     var connected = false;
 
-    var remoteDescriptionReady = false;
+    var isCaller = false;
 
+    var remoteDescriptionSet = false;
+
+
+    /*
+     * ==========================================
+     * UI ELEMENTS
+     * ==========================================
+     */
 
     var statusDot =
         document.getElementById("statusDot");
@@ -53,19 +101,27 @@
 
 
     /*
-     * UI
+     * ==========================================
+     * STATUS UI
+     * ==========================================
      */
 
     function setStatus(type, title, sub) {
 
-        statusDot.className =
-            "status-dot " + type;
+        if (statusDot) {
+            statusDot.className =
+                "status-dot " + type;
+        }
 
-        connectionText.textContent =
-            title;
+        if (connectionText) {
+            connectionText.textContent =
+                title;
+        }
 
-        connectionSub.textContent =
-            sub;
+        if (connectionSub) {
+            connectionSub.textContent =
+                sub;
+        }
     }
 
 
@@ -103,7 +159,35 @@
 
 
     /*
-     * Create WebRTC connection
+     * ==========================================
+     * WEBRTC SUPPORT CHECK
+     * ==========================================
+     */
+
+    function checkWebRTC() {
+
+        if (
+            typeof RTCPeerConnection ===
+            "undefined"
+        ) {
+
+            setStatus(
+                "offline",
+                "WebRTC unavailable",
+                "This browser does not support WebRTC"
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /*
+     * ==========================================
+     * CREATE PEER
+     * ==========================================
      */
 
     function createPeer() {
@@ -112,16 +196,15 @@
             return;
         }
 
-        if (typeof RTCPeerConnection === "undefined") {
 
-            setStatus(
-                "offline",
-                "WebRTC unavailable",
-                "This device does not support WebRTC"
-            );
-
+        if (!checkWebRTC()) {
             return;
         }
+
+
+        console.log(
+            "Creating RTCPeerConnection"
+        );
 
 
         peer =
@@ -130,87 +213,340 @@
             );
 
 
+        /*
+         * --------------------------------------
+         * ICE CANDIDATE
+         * --------------------------------------
+         */
+
         peer.onicecandidate =
             function (event) {
 
-                /*
-                 * ICE candidate collection
-                 * is handled by waitForICE().
-                 */
+                if (event.candidate) {
+
+                    console.log(
+                        "ICE candidate generated"
+                    );
+
+                } else {
+
+                    console.log(
+                        "ICE gathering completed"
+                    );
+                }
             };
 
 
-        peer.onconnectionstatechange =
+        /*
+         * --------------------------------------
+         * ICE GATHERING STATE
+         * --------------------------------------
+         */
+
+        peer.onicegatheringstatechange =
+            function () {
+
+                console.log(
+                    "ICE gathering:",
+                    peer.iceGatheringState
+                );
+
+            };
+
+
+        /*
+         * --------------------------------------
+         * ICE CONNECTION STATE
+         *
+         * This is the important part.
+         * --------------------------------------
+         */
+
+        peer.oniceconnectionstatechange =
             function () {
 
                 var state =
-                    peer.connectionState;
+                    peer.iceConnectionState;
 
-                if (state === "connected") {
+
+                console.log(
+                    "ICE connection state:",
+                    state
+                );
+
+
+                if (state === "new") {
+
+                    setStatus(
+                        "offline",
+                        "Ready",
+                        "Waiting for connection"
+                    );
+                }
+
+
+                if (state === "checking") {
+
+                    setStatus(
+                        "offline",
+                        "Connecting...",
+                        "Checking network connection"
+                    );
+                }
+
+
+                if (
+                    state === "connected" ||
+                    state === "completed"
+                ) {
 
                     connected = true;
 
                     setStatus(
                         "online",
                         "Connected",
-                        "Peer connection active"
+                        "Voice connection active"
                     );
 
-                } else if (
-                    state === "disconnected" ||
-                    state === "failed"
-                ) {
+                    audioStatus.textContent =
+                        "Ready";
+                }
+
+
+                if (state === "disconnected") {
 
                     connected = false;
 
                     setStatus(
                         "offline",
                         "Disconnected",
-                        "Connection lost"
+                        "Connection temporarily lost"
+                    );
+                }
+
+
+                if (state === "failed") {
+
+                    connected = false;
+
+                    setStatus(
+                        "offline",
+                        "Connection failed",
+                        "WebRTC could not connect"
+                    );
+                }
+
+
+                if (state === "closed") {
+
+                    connected = false;
+
+                    setStatus(
+                        "offline",
+                        "Connection closed",
+                        "Call ended"
+                    );
+                }
+
+            };
+
+
+        /*
+         * --------------------------------------
+         * PEER CONNECTION STATE
+         * --------------------------------------
+         */
+
+        peer.onconnectionstatechange =
+            function () {
+
+                /*
+                 * Some older browsers may not
+                 * expose connectionState.
+                 */
+
+                if (
+                    typeof peer.connectionState ===
+                    "undefined"
+                ) {
+                    return;
+                }
+
+
+                console.log(
+                    "Peer connection:",
+                    peer.connectionState
+                );
+
+
+                if (
+                    peer.connectionState ===
+                    "connected"
+                ) {
+
+                    connected = true;
+
+                    setStatus(
+                        "online",
+                        "Connected",
+                        "Voice connection active"
+                    );
+                }
+
+
+                if (
+                    peer.connectionState ===
+                    "failed"
+                ) {
+
+                    connected = false;
+
+                    setStatus(
+                        "offline",
+                        "Connection failed",
+                        "Peer connection failed"
                     );
                 }
             };
 
 
+        /*
+         * --------------------------------------
+         * REMOTE AUDIO
+         * --------------------------------------
+         */
+
         peer.ontrack =
             function (event) {
 
-                if (event.streams &&
-                    event.streams[0]) {
+                console.log(
+                    "Remote audio received"
+                );
+
+
+                if (
+                    event.streams &&
+                    event.streams.length > 0
+                ) {
 
                     remoteAudio.srcObject =
                         event.streams[0];
 
-                    remoteAudio.play()
-                        .catch(function () {});
 
+                    /*
+                     * Try to start audio.
+                     */
+
+                    var playPromise =
+                        remoteAudio.play();
+
+
+                    if (playPromise) {
+
+                        playPromise.catch(
+                            function (error) {
+
+                                console.log(
+                                    "Audio autoplay blocked",
+                                    error
+                                );
+
+                            }
+                        );
+                    }
+
+
+                    audioStatus.textContent =
+                        "Receiving";
                 }
+
             };
+
+
+        /*
+         * --------------------------------------
+         * NEGOTIATION
+         * --------------------------------------
+         */
+
+        peer.onnegotiationneeded =
+            function () {
+
+                console.log(
+                    "Negotiation needed"
+                );
+
+            };
+
+
+        console.log(
+            "Peer created"
+        );
     }
 
 
     /*
-     * Microphone
+     * ==========================================
+     * MICROPHONE
+     * ==========================================
      */
 
     function getMicrophone() {
 
         if (localStream) {
+
             return Promise.resolve(
                 localStream
             );
         }
 
 
+        /*
+         * Modern API
+         */
+
         if (
-            !navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia
+            navigator.mediaDevices &&
+            navigator.mediaDevices.getUserMedia
         ) {
+
+            return navigator.mediaDevices
+                .getUserMedia({
+
+                    audio: true,
+
+                    video: false
+
+                })
+                .then(function (stream) {
+
+                    setupLocalStream(
+                        stream
+                    );
+
+                    return stream;
+
+                });
+
+        }
+
+
+        /*
+         * Older browser API
+         */
+
+        var oldGetUserMedia =
+            navigator.getUserMedia ||
+            navigator.mozGetUserMedia ||
+            navigator.webkitGetUserMedia;
+
+
+        if (!oldGetUserMedia) {
 
             setStatus(
                 "offline",
                 "Microphone unavailable",
-                "KaiOS API not available"
+                "getUserMedia is not supported"
             );
 
             return Promise.reject(
@@ -221,65 +557,127 @@
         }
 
 
-        return navigator.mediaDevices
-            .getUserMedia({
-                audio: true,
-                video: false
-            })
-            .then(function (stream) {
+        return new Promise(
+            function (resolve, reject) {
 
-                localStream = stream;
+                oldGetUserMedia.call(
+                    navigator,
+                    {
+                        audio: true,
+                        video: false
+                    },
 
+                    function (stream) {
 
-                stream.getTracks()
-                    .forEach(function (track) {
-
-                        /*
-                         * Start muted.
-                         * Audio is enabled only
-                         * while TALK is pressed.
-                         */
-
-                        track.enabled = false;
-
-                        peer.addTrack(
-                            track,
+                        setupLocalStream(
                             stream
                         );
 
-                    });
+                        resolve(stream);
+                    },
 
+                    function (error) {
 
-                return stream;
-            });
+                        reject(error);
+                    }
+                );
+
+            }
+        );
     }
 
 
     /*
-     * Wait for ICE gathering
+     * ==========================================
+     * SETUP LOCAL AUDIO
+     * ==========================================
+     */
+
+    function setupLocalStream(stream) {
+
+        localStream =
+            stream;
+
+
+        console.log(
+            "Microphone permission granted"
+        );
+
+
+        var tracks =
+            stream.getAudioTracks();
+
+
+        for (
+            var i = 0;
+            i < tracks.length;
+            i++
+        ) {
+
+            /*
+             * Start muted.
+             *
+             * Audio is enabled only
+             * while HOLD TO TALK is pressed.
+             */
+
+            tracks[i].enabled =
+                false;
+
+
+            peer.addTrack(
+                tracks[i],
+                stream
+            );
+        }
+
+
+        audioStatus.textContent =
+            "Ready";
+    }
+
+
+    /*
+     * ==========================================
+     * WAIT FOR ICE GATHERING
+     * ==========================================
      */
 
     function waitForICE() {
 
-        return new Promise(function (resolve) {
+        return new Promise(
+            function (resolve) {
 
-            if (
-                peer.iceGatheringState ===
-                "complete"
-            ) {
-
-                resolve();
-
-                return;
-            }
-
-
-            function check() {
+                /*
+                 * Already complete
+                 */
 
                 if (
                     peer.iceGatheringState ===
                     "complete"
                 ) {
+
+                    resolve();
+
+                    return;
+                }
+
+
+                /*
+                 * Wait for completion
+                 */
+
+                var finished =
+                    false;
+
+
+                function finish() {
+
+                    if (finished) {
+                        return;
+                    }
+
+                    finished = true;
 
                     peer.removeEventListener(
                         "icegatheringstatechange",
@@ -288,29 +686,52 @@
 
                     resolve();
                 }
+
+
+                function check() {
+
+                    console.log(
+                        "ICE gathering:",
+                        peer.iceGatheringState
+                    );
+
+
+                    if (
+                        peer.iceGatheringState ===
+                        "complete"
+                    ) {
+
+                        finish();
+                    }
+                }
+
+
+                peer.addEventListener(
+                    "icegatheringstatechange",
+                    check
+                );
+
+
+                /*
+                 * Safety timeout.
+                 *
+                 * Do not wait forever.
+                 */
+
+                setTimeout(
+                    finish,
+                    8000
+                );
+
             }
-
-
-            peer.addEventListener(
-                "icegatheringstatechange",
-                check
-            );
-
-
-            /*
-             * Safety timeout.
-             */
-
-            setTimeout(
-                resolve,
-                5000
-            );
-        });
+        );
     }
 
 
     /*
+     * ==========================================
      * CREATE OFFER
+     * ==========================================
      */
 
     document
@@ -318,71 +739,129 @@
         .onclick =
         function () {
 
+            isCaller = true;
+
+
+            setStatus(
+                "offline",
+                "Preparing...",
+                "Requesting microphone"
+            );
+
+
             createPeer();
 
 
             getMicrophone()
 
-                .then(function () {
+                .then(
+                    function () {
 
-                    return peer.createOffer();
+                        return peer
+                            .createOffer({
+                                offerToReceiveAudio:
+                                    true
+                            });
 
-                })
+                    }
+                )
 
-                .then(function (offer) {
+                .then(
+                    function (offer) {
 
-                    return peer.setLocalDescription(
-                        offer
-                    );
-
-                })
-
-                .then(function () {
-
-                    return waitForICE();
-
-                })
-
-                .then(function () {
-
-                    var data = {
-                        type: "offer",
-                        sdp:
-                            peer.localDescription.sdp
-                    };
+                        console.log(
+                            "Offer created"
+                        );
 
 
-                    connectionCode.value =
-                        JSON.stringify(data);
+                        return peer
+                            .setLocalDescription(
+                                offer
+                            );
+
+                    }
+                )
+
+                .then(
+                    function () {
+
+                        setStatus(
+                            "offline",
+                            "Preparing connection",
+                            "Collecting network information"
+                        );
 
 
-                    codePanel.className =
-                        "code-panel";
+                        return waitForICE();
+
+                    }
+                )
+
+                .then(
+                    function () {
+
+                        var offerData = {
+
+                            type: "offer",
+
+                            sdp:
+                                peer
+                                .localDescription
+                                .sdp
+
+                        };
 
 
-                    setStatus(
-                        "offline",
-                        "Offer created",
-                        "Send this code to the other phone"
-                    );
+                        connectionCode.value =
+                            JSON.stringify(
+                                offerData
+                            );
 
-                })
 
-                .catch(function (error) {
+                        codePanel.className =
+                            "code-panel";
 
-                    console.log(error);
 
-                    setStatus(
-                        "offline",
-                        "Connection error",
-                        error.message
-                    );
-                });
+                        setStatus(
+                            "offline",
+                            "Offer ready",
+                            "Send the code to the other phone"
+                        );
+
+
+                        console.log(
+                            "OFFER:",
+                            offerData
+                        );
+
+                    }
+                )
+
+                .catch(
+                    function (error) {
+
+                        console.error(
+                            "Offer error:",
+                            error
+                        );
+
+
+                        setStatus(
+                            "offline",
+                            "Connection error",
+                            error.message ||
+                            "Could not create offer"
+                        );
+
+                    }
+                );
         };
 
 
     /*
+     * ==========================================
      * ENTER REMOTE CODE
+     * ==========================================
      */
 
     document
@@ -391,8 +870,8 @@
         function () {
 
             var code =
-                prompt(
-                    "Paste connection code:"
+                window.prompt(
+                    "Paste Offer or Answer code:"
                 );
 
 
@@ -407,15 +886,21 @@
                     JSON.parse(code);
 
 
-                if (data.type === "offer") {
+                if (
+                    data.type === "offer"
+                ) {
 
-                    acceptOffer(data);
+                    acceptOffer(
+                        data
+                    );
 
                 } else if (
                     data.type === "answer"
                 ) {
 
-                    acceptAnswer(data);
+                    acceptAnswer(
+                        data
+                    );
 
                 } else {
 
@@ -424,104 +909,181 @@
                     );
                 }
 
-            } catch (error) {
+            }
+            catch (error) {
+
+                console.error(
+                    error
+                );
+
 
                 alert(
-                    "Invalid code"
+                    "Invalid JSON connection code"
                 );
             }
         };
 
 
     /*
+     * ==========================================
      * ACCEPT OFFER
+     * ==========================================
      */
 
     function acceptOffer(data) {
+
+        isCaller = false;
+
+
+        setStatus(
+            "offline",
+            "Preparing...",
+            "Receiving connection request"
+        );
+
 
         createPeer();
 
 
         getMicrophone()
 
-            .then(function () {
+            .then(
+                function () {
 
-                return peer.setRemoteDescription({
-
-                    type: "offer",
-
-                    sdp: data.sdp
-
-                });
-
-            })
-
-            .then(function () {
-
-                remoteDescriptionReady =
-                    true;
-
-                return peer.createAnswer();
-
-            })
-
-            .then(function (answer) {
-
-                return peer.setLocalDescription(
-                    answer
-                );
-
-            })
-
-            .then(function () {
-
-                return waitForICE();
-
-            })
-
-            .then(function () {
-
-                var answerCode = {
-
-                    type: "answer",
-
-                    sdp:
-                        peer.localDescription.sdp
-
-                };
-
-
-                connectionCode.value =
-                    JSON.stringify(
-                        answerCode
+                    console.log(
+                        "Setting remote OFFER"
                     );
 
 
-                codePanel.className =
-                    "code-panel";
+                    return peer
+                        .setRemoteDescription({
+
+                            type: "offer",
+
+                            sdp: data.sdp
+
+                        });
+
+                }
+            )
+
+            .then(
+                function () {
+
+                    remoteDescriptionSet =
+                        true;
 
 
-                setStatus(
-                    "offline",
-                    "Answer created",
-                    "Send answer back"
-                );
+                    console.log(
+                        "Remote offer set"
+                    );
 
-            })
 
-            .catch(function (error) {
+                    return peer
+                        .createAnswer({
+                            offerToReceiveAudio:
+                                true
+                        });
 
-                console.log(error);
+                }
+            )
 
-                alert(
-                    "Could not create answer"
-                );
-            });
+            .then(
+                function (answer) {
+
+                    console.log(
+                        "Answer created"
+                    );
+
+
+                    return peer
+                        .setLocalDescription(
+                            answer
+                        );
+
+                }
+            )
+
+            .then(
+                function () {
+
+                    setStatus(
+                        "offline",
+                        "Preparing answer",
+                        "Collecting network information"
+                    );
+
+
+                    return waitForICE();
+
+                }
+            )
+
+            .then(
+                function () {
+
+                    var answerData = {
+
+                        type: "answer",
+
+                        sdp:
+                            peer
+                            .localDescription
+                            .sdp
+
+                    };
+
+
+                    connectionCode.value =
+                        JSON.stringify(
+                            answerData
+                        );
+
+
+                    codePanel.className =
+                        "code-panel";
+
+
+                    setStatus(
+                        "offline",
+                        "Answer ready",
+                        "Send this code back to caller"
+                    );
+
+
+                    console.log(
+                        "ANSWER:",
+                        answerData
+                    );
+
+                }
+            )
+
+            .catch(
+                function (error) {
+
+                    console.error(
+                        "Answer error:",
+                        error
+                    );
+
+
+                    setStatus(
+                        "offline",
+                        "Connection error",
+                        error.message ||
+                        "Could not create answer"
+                    );
+
+                }
+            );
     }
 
 
     /*
+     * ==========================================
      * ACCEPT ANSWER
+     * ==========================================
      */
 
     function acceptAnswer(data) {
@@ -529,47 +1091,84 @@
         if (!peer) {
 
             alert(
-                "Create an offer first"
+                "Create the connection first."
             );
 
             return;
         }
 
 
-        peer.setRemoteDescription({
-
-            type: "answer",
-
-            sdp: data.sdp
-
-        })
-
-        .then(function () {
-
-            remoteDescriptionReady =
-                true;
-
-            setStatus(
-                "online",
-                "Connecting...",
-                "Waiting for peer"
-            );
-
-        })
-
-        .catch(function (error) {
-
-            console.log(error);
+        if (!isCaller) {
 
             alert(
-                "Invalid answer"
+                "This device did not create the offer."
             );
-        });
+
+            return;
+        }
+
+
+        setStatus(
+            "offline",
+            "Connecting...",
+            "Applying remote answer"
+        );
+
+
+        peer
+            .setRemoteDescription({
+
+                type: "answer",
+
+                sdp: data.sdp
+
+            })
+
+            .then(
+                function () {
+
+                    remoteDescriptionSet =
+                        true;
+
+
+                    console.log(
+                        "Remote answer applied"
+                    );
+
+
+                    setStatus(
+                        "offline",
+                        "Connecting...",
+                        "Waiting for WebRTC connection"
+                    );
+
+                }
+            )
+
+            .catch(
+                function (error) {
+
+                    console.error(
+                        "Answer error:",
+                        error
+                    );
+
+
+                    setStatus(
+                        "offline",
+                        "Invalid answer",
+                        error.message
+                    );
+
+                }
+            );
     }
 
 
     /*
-     * TALK BUTTON
+     * ==========================================
+     * PUSH TO TALK
+     * ==========================================
      */
 
     function startTalking() {
@@ -578,8 +1177,8 @@
 
             setStatus(
                 "offline",
-                "Not ready",
-                "Connect first"
+                "Microphone not ready",
+                "Create a connection first"
             );
 
             return;
@@ -591,23 +1190,34 @@
             setStatus(
                 "offline",
                 "Not connected",
-                "Connect to another phone first"
+                "Wait until connection is established"
             );
 
             return;
         }
 
 
-        localStream
-            .getAudioTracks()
-            .forEach(function (track) {
+        var tracks =
+            localStream.getAudioTracks();
 
-                track.enabled = true;
 
-            });
+        for (
+            var i = 0;
+            i < tracks.length;
+            i++
+        ) {
+
+            tracks[i].enabled =
+                true;
+        }
 
 
         setTalking(true);
+
+
+        console.log(
+            "TALK START"
+        );
     }
 
 
@@ -618,38 +1228,35 @@
         }
 
 
-        localStream
-            .getAudioTracks()
-            .forEach(function (track) {
+        var tracks =
+            localStream.getAudioTracks();
 
-                track.enabled = false;
 
-            });
+        for (
+            var i = 0;
+            i < tracks.length;
+            i++
+        ) {
+
+            tracks[i].enabled =
+                false;
+        }
 
 
         setTalking(false);
+
+
+        console.log(
+            "TALK STOP"
+        );
     }
 
 
     /*
-     * Mouse / touchscreen
+     * ==========================================
+     * TOUCH CONTROLS
+     * ==========================================
      */
-
-    talkButton.addEventListener(
-        "mousedown",
-        startTalking
-    );
-
-    talkButton.addEventListener(
-        "mouseup",
-        stopTalking
-    );
-
-    talkButton.addEventListener(
-        "mouseleave",
-        stopTalking
-    );
-
 
     talkButton.addEventListener(
         "touchstart",
@@ -659,7 +1266,8 @@
 
             startTalking();
 
-        }
+        },
+        false
     );
 
 
@@ -671,33 +1279,87 @@
 
             stopTalking();
 
-        }
+        },
+        false
+    );
+
+
+    talkButton.addEventListener(
+        "touchcancel",
+        function (event) {
+
+            event.preventDefault();
+
+            stopTalking();
+
+        },
+        false
     );
 
 
     /*
-     * Keyboard support
+     * ==========================================
+     * MOUSE CONTROLS
+     * ==========================================
+     */
+
+    talkButton.addEventListener(
+        "mousedown",
+        function () {
+
+            startTalking();
+
+        },
+        false
+    );
+
+
+    talkButton.addEventListener(
+        "mouseup",
+        function () {
+
+            stopTalking();
+
+        },
+        false
+    );
+
+
+    talkButton.addEventListener(
+        "mouseleave",
+        function () {
+
+            stopTalking();
+
+        },
+        false
+    );
+
+
+    /*
+     * ==========================================
+     * KEYBOARD / KAIOS KEYPAD
+     * ==========================================
      *
-     * Useful for KaiOS keypad.
+     * Enter / OK = Push to Talk
      */
 
     document.addEventListener(
         "keydown",
         function (event) {
 
-            /*
-             * Enter / OK
-             */
-
             if (
                 event.key === "Enter" ||
                 event.keyCode === 13
             ) {
 
+                event.preventDefault();
+
                 startTalking();
             }
 
-        }
+        },
+        false
     );
 
 
@@ -710,15 +1372,20 @@
                 event.keyCode === 13
             ) {
 
+                event.preventDefault();
+
                 stopTalking();
             }
 
-        }
+        },
+        false
     );
 
 
     /*
-     * COPY
+     * ==========================================
+     * COPY CONNECTION CODE
+     * ==========================================
      */
 
     document
@@ -726,8 +1393,8 @@
         .onclick =
         function () {
 
-            connectionCode
-                .select();
+            connectionCode.select();
+
 
             try {
 
@@ -735,21 +1402,25 @@
                     "copy"
                 );
 
+
                 alert(
                     "Code copied"
                 );
 
-            } catch (error) {
+            }
+            catch (error) {
 
                 alert(
-                    "Copy failed. Select and copy manually."
+                    "Copy failed. Select the code manually."
                 );
             }
         };
 
 
     /*
-     * CLOSE
+     * ==========================================
+     * CLOSE CODE PANEL
+     * ==========================================
      */
 
     document
@@ -763,7 +1434,9 @@
 
 
     /*
+     * ==========================================
      * INITIAL STATE
+     * ==========================================
      */
 
     setStatus(
@@ -771,5 +1444,11 @@
         "Not connected",
         "Ready to connect"
     );
+
+
+    console.log(
+        "WiFi Walkie initialized"
+    );
+
 
 })();
