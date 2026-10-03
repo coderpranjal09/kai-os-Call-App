@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+
+    <meta name="viewport"
+          content="width=device-width,
+                   initial-scale=1,
+                   maximum-scale=1,
+                   user-scalable=no">
+
+    <title>WiFi Walkie</title>
+
+    <link rel="stylesheet"
+          href="style.css">
+</head>
+
+<body>
+
+    <header class="header">
+
+        <div class="logo">
+            <span class="logo-icon">W</span>
+
+            <div>
+                <div class="app-name">
+                    WiFi Walkie
+                </div>
+
+                <div class="subtitle">
+                    Push to talk
+                </div>
+            </div>
+        </div>
+
+        <div id="statusDot"
+             class="status-dot offline">
+        </div>
+
+    </header>
+
+
+    <main>
+
+        <section class="connection-card">
+
+            <div class="section-title">
+                CONNECTION
+            </div>
+
+            <div class="connection-row">
+
+                <div>
+                    <div id="connectionText"
+                         class="connection-text">
+                        Not connected
+                    </div>
+
+                    <div id="connectionSub"
+                         class="connection-sub">
+                        Ready to connect
+                    </div>
+                </div>
+
+                <div id="signal"
+                     class="signal">
+                    •••
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <section class="talk-section">
+
+            <div id="speaker"
+                 class="speaker">
+                READY
+            </div>
+
+            <button id="talkButton"
+                    class="talk-button">
+
+                <span class="mic">
+                    🎙
+                </span>
+
+                <span>
+                    HOLD TO TALK
+                </span>
+
+            </button>
+
+            <div class="talk-hint">
+                Hold the button to speak
+            </div>
+
+        </section>
+
+
+        <section class="control-card">
+
+            <div class="section-title">
+                PEER CONNECTION
+            </div>
+
+            <button id="createOffer"
+                    class="action-button">
+                CREATE CONNECTION
+            </button>
+
+            <button id="acceptOffer"
+                    class="action-button secondary">
+                ENTER REMOTE CODE
+            </button>
+
+        </section>
+
+
+        <section id="codePanel"
+                 class="code-panel hidden">
+
+            <div class="section-title">
+                CONNECTION CODE
+            </div>
+
+            <textarea id="connectionCode"
+                      readonly></textarea>
+
+            <button id="copyCode"
+                    class="action-button">
+                COPY CODE
+            </button>
+
+            <button id="closeCode"
+                    class="action-button secondary">
+                CLOSE
+            </button>
+
+        </section>
+
+
+        <section class="info">
+
+            <div class="info-row">
+                <span>NETWORK</span>
+                <span id="network">
+                    Wi-Fi
+                </span>
+            </div>
+
+            <div class="info-row">
+                <span>MODE</span>
+                <span>
+                    WebRTC
+                </span>
+            </div>
+
+            <div class="info-row">
+                <span>AUDIO</span>
+                <span id="audioStatus">
+                    Standby
+                </span>
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+
+        <span>
+            WiFi Walkie v1.0
+        </span>
+
+    </footer>
+
+
+    <audio id="remoteAudio"
+           autoplay>
+    </audio>
+
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

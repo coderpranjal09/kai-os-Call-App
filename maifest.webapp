@@ -1,0 +1,15 @@
+{
+  "name": "WiFi Walkie",
+  "description": "Lightweight Wi-Fi WebRTC Walkie Talkie",
+  "launch_path": "/index.html",
+  "type": "web",
+  "version": "1.0.0",
+  "developer": {
+    "name": "Pranjal"
+  },
+  "permissions": {
+    "audio-capture": {},
+    "video-capture": {},
+    "geolocation": {}
+  }
+}

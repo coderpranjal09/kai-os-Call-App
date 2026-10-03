@@ -1,0 +1,362 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    background: #f5f7fa;
+    color: #17202a;
+
+    font-family:
+        Arial,
+        sans-serif;
+
+    font-size: 14px;
+
+    overflow-x: hidden;
+}
+
+
+/* HEADER */
+
+.header {
+    height: 58px;
+
+    background: #ffffff;
+
+    border-bottom: 1px solid #e4e8ec;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 12px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo-icon {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 8px;
+
+    background: #2563eb;
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;
+    font-weight: bold;
+
+    margin-right: 8px;
+}
+
+.app-name {
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.subtitle {
+    font-size: 10px;
+    color: #7b8794;
+
+    margin-top: 2px;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+}
+
+.status-dot.offline {
+    background: #c5ccd3;
+}
+
+.status-dot.online {
+    background: #16a34a;
+}
+
+.status-dot.talking {
+    background: #ef4444;
+}
+
+
+/* MAIN */
+
+main {
+    padding: 10px;
+}
+
+
+/* CARDS */
+
+.connection-card,
+.control-card,
+.info {
+    background: #ffffff;
+
+    border: 1px solid #e3e7eb;
+
+    border-radius: 10px;
+
+    padding: 11px;
+
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-size: 9px;
+    font-weight: bold;
+
+    color: #7b8794;
+
+    letter-spacing: 0.8px;
+
+    margin-bottom: 8px;
+}
+
+
+/* CONNECTION */
+
+.connection-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.connection-text {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.connection-sub {
+    color: #8a959f;
+    font-size: 10px;
+
+    margin-top: 3px;
+}
+
+.signal {
+    color: #16a34a;
+    font-size: 15px;
+    letter-spacing: 1px;
+}
+
+
+/* TALK */
+
+.talk-section {
+    text-align: center;
+
+    background: #ffffff;
+
+    border: 1px solid #e3e7eb;
+
+    border-radius: 10px;
+
+    padding: 14px 10px;
+
+    margin-bottom: 10px;
+}
+
+.speaker {
+    font-size: 10px;
+    font-weight: bold;
+
+    color: #64748b;
+
+    margin-bottom: 10px;
+}
+
+.speaker.active {
+    color: #ef4444;
+}
+
+.talk-button {
+    width: 150px;
+    height: 150px;
+
+    border-radius: 75px;
+
+    border: 0;
+
+    background: #2563eb;
+
+    color: #ffffff;
+
+    font-size: 14px;
+    font-weight: bold;
+
+    outline: none;
+
+    display: inline-flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    box-shadow:
+        0 5px 15px
+        rgba(37, 99, 235, 0.18);
+}
+
+.talk-button:active {
+    background: #1d4ed8;
+
+    transform: scale(0.96);
+}
+
+.talk-button.talking {
+    background: #ef4444;
+}
+
+.mic {
+    font-size: 28px;
+
+    margin-bottom: 6px;
+}
+
+.talk-hint {
+    margin-top: 9px;
+
+    color: #8a959f;
+
+    font-size: 10px;
+}
+
+
+/* BUTTONS */
+
+.action-button {
+    width: 100%;
+
+    height: 38px;
+
+    border: 0;
+
+    border-radius: 7px;
+
+    background: #2563eb;
+
+    color: white;
+
+    font-size: 12px;
+    font-weight: bold;
+
+    margin-top: 6px;
+}
+
+.action-button:active {
+    background: #1d4ed8;
+}
+
+.action-button.secondary {
+    background: #eef2f6;
+
+    color: #334155;
+}
+
+.action-button.secondary:active {
+    background: #e2e8f0;
+}
+
+
+/* CODE */
+
+.code-panel {
+    background: white;
+
+    border: 1px solid #e3e7eb;
+
+    border-radius: 10px;
+
+    padding: 11px;
+
+    margin-bottom: 10px;
+}
+
+.code-panel textarea {
+    width: 100%;
+
+    height: 80px;
+
+    resize: none;
+
+    border: 1px solid #d8dee5;
+
+    border-radius: 6px;
+
+    padding: 7px;
+
+    font-size: 9px;
+
+    color: #334155;
+
+    background: #f8fafc;
+}
+
+.hidden {
+    display: none;
+}
+
+
+/* INFO */
+
+.info {
+    padding: 4px 11px;
+}
+
+.info-row {
+    height: 31px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    border-bottom: 1px solid #edf0f2;
+
+    font-size: 10px;
+}
+
+.info-row:last-child {
+    border-bottom: 0;
+}
+
+.info-row span:first-child {
+    color: #7b8794;
+}
+
+.info-row span:last-child {
+    font-weight: bold;
+}
+
+
+/* FOOTER */
+
+footer {
+    text-align: center;
+
+    color: #a0aab4;
+
+    font-size: 9px;
+
+    padding: 4px 0 10px;
+}
